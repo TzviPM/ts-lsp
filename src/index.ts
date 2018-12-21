@@ -5,7 +5,8 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
-  TextDocuments
+  TextDocumentSyncKind,
+  TextDocumentContentChangeEvent
 } from "vscode-languageserver";
 
 const parser = new Parser();
@@ -14,8 +15,6 @@ parser.setLanguage(TypeScript);
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 let connection = createConnection(ProposedFeatures.all);
-
-let documents: TextDocuments = new TextDocuments();
 
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
@@ -32,7 +31,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   return {
     capabilities: {
-      textDocumentSync: documents.syncKind,
+      textDocumentSync: TextDocumentSyncKind.Incremental,
       completionProvider: {
         resolveProvider: true
       }
@@ -57,13 +56,15 @@ connection.onInitialized(() => {
 
 interface DocumentContext {
   tree: Parser.Tree;
+  text: string;
 }
 
 let documentContexts: Map<string, DocumentContext> = new Map();
 
 connection.onDidOpenTextDocument(params => {
-  const tree = parser.parse(params.textDocument.text);
-  documentContexts.set(params.textDocument.uri, { tree });
+  const { text } = params.textDocument;
+  const tree = parser.parse(text);
+  documentContexts.set(params.textDocument.uri, { tree, text });
   connection.console.log(
     `${params.textDocument.uri} opened. Tree: ${tree.rootNode.toString()}`
   );
@@ -74,30 +75,15 @@ connection.onDidChangeTextDocument(params => {
   const context = documentContexts.get(documentURI);
 
   for (const change of params.contentChanges) {
-    // context.tree.edit({
-    //   startIndex: document.offsetAt(change.range.start),
-    //   startPosition: {
-    //     column: change.range.start.character,
-    //     row: change.range.start.line,
-    //   },
-    //   oldEndIndex: change.rangeLength,
-    //   oldEndPosition: {
-    //     column: change.range.end.character,
-    //     row: change.range.end.line,
-    //   },
-    //   newEndIndex
-    // });
-    context.tree = parser.parse(change.text, context.tree);
+    const { text, ...editOptions } = calculateDiff(context.text, change);
+    context.tree.edit(editOptions);
+    context.tree = parser.parse(text, context.tree);
+    context.text = text;
   }
   connection.console.log(
-    `${params.textDocument.uri} changed. Changes: ${params.contentChanges
-      .map(
-        change =>
-          `range: ${JSON.stringify(change.range)}; rangeLength: ${
-            change.rangeLength
-          }.`
-      )
-      .join("\n")}`
+    `${
+      params.textDocument.uri
+    } changed. Tree: ${context.tree.rootNode.toString()}`
   );
 });
 connection.onDidCloseTextDocument(params => {
@@ -105,5 +91,36 @@ connection.onDidCloseTextDocument(params => {
   connection.console.log(`${params.textDocument.uri} closed.`);
 });
 
-documents.listen(connection);
+function calculateDiff(oldText, change: TextDocumentContentChangeEvent) {
+  const oldLines = oldText.split("\n");
+  const { start, end } = change.range;
+  const beforeLines = oldLines.slice(0, start.line);
+  beforeLines[start.line] = beforeLines[start.line].substr(0, start.character);
+  const afterLines = oldLines.slice(end.line);
+  afterLines[0] = afterLines[0].slice(end.character);
+
+  const before = beforeLines.join("\n");
+  const { text: inserted } = change;
+  const insertedLines = inserted.split("\n");
+
+  const finalText = before + inserted + afterLines.join("\n");
+
+  return {
+    startIndex: before.length,
+    oldEndIndex: before.length + change.rangeLength,
+    newEndIndex: before.length + inserted.length,
+    startPosition: { row: start.line, column: start.character },
+    oldEndPosition: { row: end.line, column: end.character },
+    newEndPosition: {
+      row: start.line + insertedLines.length - 1,
+      column:
+        insertedLines.length > 1
+          ? insertedLines[insertedLines.length - 1].length
+          : insertedLines[insertedLines.length - 1].length +
+            beforeLines[start.line].length
+    },
+    text: finalText
+  };
+}
+
 connection.listen();
