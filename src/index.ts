@@ -94,7 +94,7 @@ connection.onDidCloseTextDocument(params => {
 function calculateDiff(oldText, change: TextDocumentContentChangeEvent) {
   const oldLines = oldText.split("\n");
   const { start, end } = change.range;
-  const beforeLines = oldLines.slice(0, start.line);
+  const beforeLines = oldLines.slice(0, start.line + 1);
   beforeLines[start.line] = beforeLines[start.line].substr(0, start.character);
   const afterLines = oldLines.slice(end.line);
   afterLines[0] = afterLines[0].slice(end.character);
