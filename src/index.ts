@@ -5,7 +5,7 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
-  TextDocumentSyncKind,
+  TextDocumentSyncKind
 } from "vscode-languageserver";
 
 const parser = new Parser();
@@ -27,10 +27,10 @@ connection.onInitialize((params: InitializeParams) => {
     capabilities.workspace && !!capabilities.workspace.configuration;
   hasWorkspaceFolderCapability =
     capabilities.workspace && !!capabilities.workspace.workspaceFolders;
-    
+
   return {
-    textDocumentSync: TextDocumentSyncKind.Full,
     capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Full,
       completionProvider: {
         resolveProvider: true
       }
@@ -62,14 +62,20 @@ let documentContexts: Map<string, DocumentContext> = new Map();
 connection.onDidOpenTextDocument(params => {
   const tree = parser.parse(params.textDocument.text);
   documentContexts.set(params.textDocument.uri, { tree });
-  connection.console.log(`${params.textDocument.uri} opened. Tree: ${tree.rootNode.toString()}`);
+  connection.console.log(
+    `${params.textDocument.uri} opened. Tree: ${tree.rootNode.toString()}`
+  );
 });
 connection.onDidChangeTextDocument(params => {
   const context = documentContexts.get(params.textDocument.uri);
   for (const change of params.contentChanges) {
     context.tree = parser.parse(change.text, context.tree);
   }
-  connection.console.log(`${params.textDocument.uri} changed. Tree: ${context.tree.rootNode.toString()}`);
+  connection.console.log(
+    `${
+      params.textDocument.uri
+    } changed. Tree: ${context.tree.rootNode.toString()}`
+  );
 });
 connection.onDidCloseTextDocument(params => {
   documentContexts.delete(params.textDocument.uri);
