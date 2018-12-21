@@ -6,7 +6,9 @@ import {
   InitializeParams,
   DidChangeConfigurationNotification,
   TextDocumentSyncKind,
-  TextDocumentContentChangeEvent
+  TextDocumentContentChangeEvent,
+  DiagnosticSeverity,
+  Diagnostic
 } from "vscode-languageserver";
 
 const parser = new Parser();
@@ -85,6 +87,26 @@ connection.onDidChangeTextDocument(params => {
       params.textDocument.uri
     } changed. Tree: ${context.tree.rootNode.toString()}`
   );
+
+  let diagnostics: Diagnostic[] = getErrors(context.tree.rootNode).map(
+    error => ({
+      severity: DiagnosticSeverity.Error,
+      range: {
+        start: {
+          line: error.startPosition.row,
+          character: error.startPosition.column
+        },
+        end: {
+          line: error.endPosition.row,
+          character: error.endPosition.column
+        }
+      },
+      message: error.text,
+      source: "parser"
+    })
+  );
+
+  connection.sendDiagnostics({uri: params.textDocument.uri, diagnostics});
 });
 connection.onDidCloseTextDocument(params => {
   documentContexts.delete(params.textDocument.uri);
@@ -121,6 +143,13 @@ function calculateDiff(oldText, change: TextDocumentContentChangeEvent) {
     },
     text: finalText
   };
+}
+
+function getErrors(node: Parser.SyntaxNode): Parser.SyntaxNode[] {
+  if (node.hasError()) {
+    return [node].concat(...node.children.map(getErrors));
+  }
+  return [].concat(...node.children.map(getErrors));
 }
 
 connection.listen();
