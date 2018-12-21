@@ -8,6 +8,10 @@
     "tree-sitter-typescript": "^0.13.6",
     "vscode-languageserver": "^5.2.1"
   },
+  "scripts": {
+    "build": "tsc -b",
+    "prepublish": "npm run build"
+  },
   "devDependencies": {
     "@types/node": "^10.12.18",
     "typescript": "^3.2.2"
