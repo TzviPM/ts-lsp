@@ -5,7 +5,7 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
-  TextDocumentSyncKind
+  TextDocuments
 } from "vscode-languageserver";
 
 const parser = new Parser();
@@ -14,6 +14,8 @@ parser.setLanguage(TypeScript);
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 let connection = createConnection(ProposedFeatures.all);
+
+let documents: TextDocuments = new TextDocuments();
 
 let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
@@ -30,7 +32,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   return {
     capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Full,
+      textDocumentSync: documents.syncKind,
       completionProvider: {
         resolveProvider: true
       }
@@ -67,14 +69,35 @@ connection.onDidOpenTextDocument(params => {
   );
 });
 connection.onDidChangeTextDocument(params => {
-  const context = documentContexts.get(params.textDocument.uri);
+  const documentURI = params.textDocument.uri;
+  // const document = documents.get(documentURI);
+  const context = documentContexts.get(documentURI);
+
   for (const change of params.contentChanges) {
+    // context.tree.edit({
+    //   startIndex: document.offsetAt(change.range.start),
+    //   startPosition: {
+    //     column: change.range.start.character,
+    //     row: change.range.start.line,
+    //   },
+    //   oldEndIndex: change.rangeLength,
+    //   oldEndPosition: {
+    //     column: change.range.end.character,
+    //     row: change.range.end.line,
+    //   },
+    //   newEndIndex
+    // });
     context.tree = parser.parse(change.text, context.tree);
   }
   connection.console.log(
-    `${
-      params.textDocument.uri
-    } changed. Tree: ${context.tree.rootNode.toString()}`
+    `${params.textDocument.uri} changed. Changes: ${params.contentChanges
+      .map(
+        change =>
+          `range: ${JSON.stringify(change.range)}; rangeLength: ${
+            change.rangeLength
+          }.`
+      )
+      .join("\n")}`
   );
 });
 connection.onDidCloseTextDocument(params => {
@@ -82,4 +105,5 @@ connection.onDidCloseTextDocument(params => {
   connection.console.log(`${params.textDocument.uri} closed.`);
 });
 
+documents.listen(connection);
 connection.listen();
