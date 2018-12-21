@@ -1,0 +1,30 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "target": "es2015",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "typeRoots": ["./node_modules/@types"],
+    "paths": {
+      "*": ["src/*"]
+    },
+    "lib": [
+      "es2015",
+      "es2016",
+      "es2017",
+      "esnext.asynciterable"
+    ]
+  },
+  "include": [
+    "./src/**/*",
+  ],
+  "exclude": ["./node_modules/**/*"]
+}
