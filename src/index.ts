@@ -5,6 +5,7 @@ import {
   ProposedFeatures,
   InitializeParams,
   DidChangeConfigurationNotification,
+  TextDocumentSyncKind,
 } from "vscode-languageserver";
 
 const parser = new Parser();
@@ -28,8 +29,8 @@ connection.onInitialize((params: InitializeParams) => {
     capabilities.workspace && !!capabilities.workspace.workspaceFolders;
     
   return {
+    textDocumentSync: TextDocumentSyncKind.Full,
     capabilities: {
-      // Tell the client that the server supports code completion
       completionProvider: {
         resolveProvider: true
       }
