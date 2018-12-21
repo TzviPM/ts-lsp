@@ -101,8 +101,8 @@ connection.onDidChangeTextDocument(params => {
           character: error.endPosition.column
         }
       },
-      message: error.text,
-      source: "parser"
+      message: error.isMissing() ? `Missing SyntaxNode (${error.type})` : 'Syntax error',
+      source: "parse"
     })
   );
 
@@ -146,7 +146,7 @@ function calculateDiff(oldText, change: TextDocumentContentChangeEvent) {
 }
 
 function getErrors(node: Parser.SyntaxNode): Parser.SyntaxNode[] {
-  if (node.hasError()) {
+  if (node.isMissing() || node.type.toUpperCase() === 'ERROR') {
     return [node].concat(...node.children.map(getErrors));
   }
   return [].concat(...node.children.map(getErrors));
