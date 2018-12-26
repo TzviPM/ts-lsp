@@ -101,7 +101,7 @@ connection.onDidChangeTextDocument(params => {
           character: error.endPosition.column
         }
       },
-      message: error.isMissing() ? `Missing SyntaxNode (${error.type})` : `Unexpected ${error.firstChild.type || 'token'}`,
+      message: errorMessage(error),
       source: "parse"
     })
   );
@@ -150,6 +150,28 @@ function getErrors(node: Parser.SyntaxNode): Parser.SyntaxNode[] {
     return [node].concat(...node.children.map(getErrors));
   }
   return [].concat(...node.children.map(getErrors));
+}
+
+const pairs = {
+  '\'': '\'',
+  '"': '"',
+  '`': '`',
+  '{': '}',
+  '[': ']',
+  '(': ')',
+};
+const closable = Object.keys(pairs);
+
+function errorMessage(error: Parser.SyntaxNode) {
+  if (error.isMissing()) {
+    return `Missing ${error.type}`;
+  }
+  const {type} = error.firstChild;
+  if (closable.indexOf(type) !== -1) {
+    return `Expected closing ${pairs[type]}`;
+  }
+
+  return `Unexpected ${type}`;
 }
 
 connection.listen();
