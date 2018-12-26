@@ -101,7 +101,7 @@ connection.onDidChangeTextDocument(params => {
           character: error.endPosition.column
         }
       },
-      message: error.isMissing() ? `Missing SyntaxNode (${error.type})` : 'Syntax error',
+      message: error.isMissing() ? `Missing SyntaxNode (${error.type})` : `Syntax error (${error.toString()})`,
       source: "parse"
     })
   );
